@@ -314,14 +314,25 @@
                         throw new Error("Excel file is empty.");
                     }
 
-                    // Determine if Farmers or Processors based on first column name
-                    const isFarmers = rawData[0]['Name of Farmer'] !== undefined || rawData[0]['Farmer Contact No.'] !== undefined || rawData[0]['Farmer Name'] !== undefined;
+                    // Standardize all object headers to remove hidden trailing/leading whitespace from the Excel file
+                    const standardizedData = rawData.map(row => {
+                        const cleanRow = {};
+                        for (const key in row) {
+                            cleanRow[key.trim()] = row[key];
+                        }
+                        return cleanRow;
+                    });
+
+                    // Determine if Farmers or Processors based on first column name of the standardized data
+                    const isFarmers = standardizedData[0]['Name of Farmer'] !== undefined ||
+                        standardizedData[0]['Farmer Contact No.'] !== undefined ||
+                        standardizedData[0]['Farmer Name'] !== undefined;
 
                     const cleanedData = [];
 
                     if (isFarmers) {
                         // Clean Farmers
-                        rawData.forEach(row => {
+                        standardizedData.forEach(row => {
                             // Find the correct keys even if they have extra spaces in the header
                             const nameKey = Object.keys(row).find(k => k.toLowerCase().includes('name of farmer') || k.toLowerCase().includes('farmer name'));
                             const locKey = Object.keys(row).find(k => k.toLowerCase().includes('address') || k.toLowerCase().includes('location'));
@@ -341,7 +352,7 @@
                         });
                     } else {
                         // Clean Processors
-                        rawData.forEach(row => {
+                        standardizedData.forEach(row => {
                             const bizKey = Object.keys(row).find(k => k.toLowerCase().includes('agro-processor') || k.toLowerCase().includes('facility name') || k.toLowerCase().includes('business'));
                             const repKey = Object.keys(row).find(k => k.toLowerCase().includes('representative') || k.toLowerCase().includes('contact person'));
                             const locKey = Object.keys(row).find(k => k.toLowerCase().includes('location') || k.toLowerCase().includes('address'));
