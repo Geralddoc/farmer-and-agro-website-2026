@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Cleaner - Division of Food Security</title>
+    <!-- Include the SheetJS (XLSX) library for EXCEL Parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2c5e1a;
+            /* Forest Green */
+            --secondary-color: #f7a028;
+            /* Harvest Gold */
+            --bg-color: #f9fdf7;
+            --text-color: #333;
+            --card-bg: #fff;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 800px;
+            margin: 2rem auto;
+        }
+
+        /* Nav */
+        header {
+            width: 100%;
+            position: absolute;
+            top: 0;
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            padding: 1rem 0;
+            display: flex;
+            justify-content: center;
+        }
+
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 90%;
+            max-width: 1200px;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        .highlight {
+            color: var(--secondary-color);
+        }
+
+        .nav-links {
+            list-style: none;
+            display: flex;
+            gap: 2rem;
+            margin: 0;
+            padding: 0;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--text-color);
+            font-weight: 600;
+            transition: color 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            color: var(--primary-color);
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 3rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            border-top: 5px solid var(--primary-color);
+            margin-top: 100px;
+            text-align: center;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+
+        p {
+            color: #666;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background-color: #fafafa;
+        }
+
+        .upload-area:hover,
+        .upload-area.dragover {
+            border-color: var(--primary-color);
+            background-color: #f0f7ef;
+        }
+
+        .upload-area input[type="file"] {
+            display: none;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+
+        .file-name {
+            margin-top: 1rem;
+            font-weight: 600;
+            color: var(--secondary-color);
+        }
+
+        .btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 1rem 2.5rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Outfit', sans-serif;
+            width: 100%;
+        }
+
+        .btn:hover {
+            background-color: #1e4210;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(44, 94, 26, 0.3);
+        }
+
+        .btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .status {
+            margin-top: 1.5rem;
+            font-weight: 600;
+        }
+
+        .success {
+            color: var(--primary-color);
+        }
+
+        .error {
+            color: #d32f2f;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <nav class="navbar">
+            <a href="index.html" class="logo">DFS <span class="highlight">Portal</span></a>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="farmers.html">Farmers</a></li>
+                <li><a href="processors.html">Agro-Processors</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <div class="container">
+        <div class="card">
+            <h1>🧹 Data Cleaner Utility</h1>
+            <p>Upload your messy `Farmers` or `Agro-Processors` Excel file. This tool will automatically fix
+                capitalization, remove extra spaces, standardise column names, and instantly download a perfectly clean
+                copy ready for Microsoft Access.</p>
+
+            <div class="upload-area" id="upload-area" onclick="document.getElementById('excel-file').click()">
+                <div class="upload-icon">📁</div>
+                <h3>Drag & Drop Excel File here</h3>
+                <p>or click to browse from your computer (.xlsx, .xls)</p>
+                <input type="file" id="excel-file" accept=".xlsx, .xls">
+                <div class="file-name" id="file-name">No file selected</div>
+            </div>
+
+            <button class="btn" id="clean-btn" disabled>Clean & Download Data</button>
+
+            <div class="status" id="status-message"></div>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('upload-area');
+        const fileInput = document.getElementById('excel-file');
+        const fileNameDisplay = document.getElementById('file-name');
+        const cleanBtn = document.getElementById('clean-btn');
+        const statusMessage = document.getElementById('status-message');
+
+        let selectedFile = null;
+
+        // --- Drag and Drop Logic ---
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, () => uploadArea.classList.add('dragover'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, () => uploadArea.classList.remove('dragover'), false);
+        });
+
+        uploadArea.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        }
+
+        fileInput.addEventListener('change', function () {
+            handleFiles(this.files);
+        });
+
+        function handleFiles(files) {
+            if (files.length > 0) {
+                selectedFile = files[0];
+                fileNameDisplay.textContent = `Selected: ${selectedFile.name}`;
+                cleanBtn.disabled = false;
+                statusMessage.innerHTML = '';
+            }
+        }
+
+        // --- String Formatting Helpers ---
+
+        // Turns "  Messy   String  " into "Messy String"
+        function cleanString(str) {
+            if (str === null || str === undefined) return '';
+            return String(str).trim().replace(/\s+/g, ' ');
+        }
+
+        // Converts "JOHN doe" into "John Doe"
+        function toTitleCase(str) {
+            if (str === null || str === undefined) return '';
+            str = cleanString(str);
+            return str.replace(
+                /\w\S*/g,
+                function (txt) {
+                    return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+                }
+            );
+        }
+
+        // Standardizes "N/A"
+        function applyDefault(str, def = 'N/A') {
+            const cleaned = cleanString(str);
+            if (!cleaned || cleaned.toLowerCase() === 'n/a' || cleaned.toLowerCase() === 'none') {
+                return def;
+            }
+            return cleaned;
+        }
+
+        // --- Main Cleaning Function ---
+        cleanBtn.addEventListener('click', () => {
+            if (!selectedFile) return;
+
+            statusMessage.innerHTML = '<span style="color:var(--secondary-color)">Processing...</span>';
+            cleanBtn.disabled = true;
+
+            const reader = new FileReader();
+
+            reader.onload = function (e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const rawData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+                    if (rawData.length === 0) {
+                        throw new Error("Excel file is empty.");
+                    }
+
+                    // Determine if Farmers or Processors based on first column name
+                    const isFarmers = rawData[0]['Name of Farmer'] !== undefined || rawData[0]['Farmer Contact No.'] !== undefined || rawData[0]['Farmer Name'] !== undefined;
+
+                    const cleanedData = [];
+
+                    if (isFarmers) {
+                        // Clean Farmers
+                        rawData.forEach(row => {
+                            // Find the correct keys even if they have extra spaces in the header
+                            const nameKey = Object.keys(row).find(k => k.toLowerCase().includes('name of farmer') || k.toLowerCase().includes('farmer name'));
+                            const locKey = Object.keys(row).find(k => k.toLowerCase().includes('address') || k.toLowerCase().includes('location'));
+                            const phoneKey = Object.keys(row).find(k => k.toLowerCase().includes('contact'));
+                            const zoneKey = Object.keys(row).find(k => k.toLowerCase().includes('zone') || k.toLowerCase().includes('district'));
+                            const commodityKey = Object.keys(row).find(k => k.toLowerCase().includes('commodity') || k.toLowerCase().includes('crop'));
+                            const statusKey = Object.keys(row).find(k => k.toLowerCase().includes('status'));
+
+                            cleanedData.push({
+                                "Farmer Name": toTitleCase(row[nameKey]),
+                                "Address": toTitleCase(applyDefault(row[locKey])),
+                                "Contact Number": cleanString(applyDefault(row[phoneKey])),
+                                "Districts": toTitleCase(row[zoneKey]),
+                                "Commodities": cleanString(row[commodityKey]),
+                                "Status": toTitleCase(applyDefault(row[statusKey], 'Active'))
+                            });
+                        });
+                    } else {
+                        // Clean Processors
+                        rawData.forEach(row => {
+                            const bizKey = Object.keys(row).find(k => k.toLowerCase().includes('agro-processor') || k.toLowerCase().includes('facility name') || k.toLowerCase().includes('business'));
+                            const repKey = Object.keys(row).find(k => k.toLowerCase().includes('representative') || k.toLowerCase().includes('contact person'));
+                            const locKey = Object.keys(row).find(k => k.toLowerCase().includes('location') || k.toLowerCase().includes('address'));
+                            const phoneKey = Object.keys(row).find(k => k.toLowerCase().includes('contact no') || k.toLowerCase().includes('phone'));
+                            const capKey = Object.keys(row).find(k => k.toLowerCase().includes('capacity'));
+                            const specKey = Object.keys(row).find(k => k.toLowerCase().includes('commodity') || k.toLowerCase().includes('specialization'));
+
+                            cleanedData.push({
+                                "Business Name": toTitleCase(row[bizKey]),
+                                "Contact Person": toTitleCase(applyDefault(row[repKey])),
+                                "Location": toTitleCase(applyDefault(row[locKey])),
+                                "Contact Number": cleanString(applyDefault(row[phoneKey])),
+                                "Processing Capacity": cleanString(applyDefault(row[capKey])),
+                                "Specialization": cleanString(row[specKey])
+                            });
+                        });
+                    }
+
+                    // Create new Workbook
+                    const newWorksheet = XLSX.utils.json_to_sheet(cleanedData);
+                    const newWorkbook = XLSX.utils.book_new();
+
+                    const newSheetName = isFarmers ? "Cleaned_Farmers" : "Cleaned_Processors";
+                    XLSX.utils.book_append_sheet(newWorkbook, newWorksheet, newSheetName);
+
+                    // Download new Excel file
+                    const outputFileName = selectedFile.name.replace('.xlsx', '_Cleaned.xlsx').replace('.xls', '_Cleaned.xlsx');
+                    XLSX.writeFile(newWorkbook, outputFileName);
+
+                    statusMessage.innerHTML = `<span class="success">Success! Your beautifully cleaned file (${outputFileName}) was downloaded! You can now import it straight into Microsoft Access.</span>`;
+                } catch (error) {
+                    console.error(error);
+                    statusMessage.innerHTML = `<span class="error">Error processing file: ${error.message}</span>`;
+                } finally {
+                    cleanBtn.disabled = false;
+                }
+            };
+
+            reader.readAsArrayBuffer(selectedFile);
+        });
+
+    </script>
+</body>
+
+</html>
