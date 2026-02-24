@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Processors Directory - Agro2026</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .directory-header {
+            padding: 120px 0 40px;
+            text-align: center;
+            background: linear-gradient(135deg, #fff9c4 0%, #fff59d 100%);
+        }
+
+        .directory-header h1 {
+            color: #f57f17;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0 4rem;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: var(--shadow-md);
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .data-table th {
+            background: #f57f17;
+            color: white;
+            font-weight: 600;
+        }
+
+        .data-table tr:hover {
+            background-color: #f8fafc;
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            background: #fff9c4;
+            color: #f57f17;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            margin: 2px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 4rem;
+            font-size: 1.2rem;
+            color: #666;
+        }
+
+        .error {
+            text-align: center;
+            padding: 2rem;
+            color: #ff5252;
+            background: #ffebee;
+            border-radius: 8px;
+            margin: 2rem 0;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="container">
+            <nav class="navbar">
+                <a href="index.html" class="logo">Agro<span class="highlight">2026</span></a>
+                <ul class="nav-links">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="farmers.html">Farmers</a></li>
+                    <li><a href="processors.html" style="color: #f57f17">Processors</a></li>
+                    <li><a href="import_data.html">Data Importer</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <div class="directory-header">
+        <div class="container">
+            <h1>🏭 Agro Processors Directory</h1>
+            <p>Discover processing facilities and capacity across the region.</p>
+        </div>
+    </div>
+
+    <main class="container">
+        <div id="status" class="loading">Fetching data from Convex Database...</div>
+        <div id="tableContainer" style="overflow-x: auto;"></div>
+    </main>
+
+    <script>
+        async function loadData() {
+            const defaultConvexUrl = 'https://happy-otter-123.convex.cloud'; // Fallback
+            let convexUrl = localStorage.getItem('convexUrl') || defaultConvexUrl;
+
+            // Clean up the URL if they accidentally saved the /importData part
+            if (convexUrl.endsWith('/importData')) {
+                convexUrl = convexUrl.replace('/importData', '');
+            }
+
+            try {
+                // Ensure the URL ends with the correct endpoint
+                const fetchUrl = `${convexUrl.replace(/\/$/, '')}/getProcessors`;
+
+                const response = await fetch(fetchUrl);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+                const data = await response.json();
+                renderTable(data);
+            } catch (error) {
+                document.getElementById('status').innerHTML = `
+                    <div class="error">
+                        <strong>Error loading data:</strong> ${error.message} <br><br>
+                        <em>Make sure you have imported the data via the Importer tool and that your Convex database is accessible.</em><br>
+                        <em>Current attempted URL: ${convexUrl}/getProcessors</em>
+                    </div>
+                `;
+            }
+        }
+
+        function renderTable(processors) {
+            if (!processors || processors.length === 0) {
+                document.getElementById('status').innerHTML = "No processors found in the database. Please use the Data Importer to upload records.";
+                return;
+            }
+
+            document.getElementById('status').style.display = 'none';
+
+            let html = `
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Business Name</th>
+                            <th>Contact Person</th>
+                            <th>Location</th>
+                            <th>Contact</th>
+                            <th>Specialization</th>
+                            <th>Capacity</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            processors.forEach(p => {
+                const specs = Array.isArray(p.specialization) ? p.specialization.map(s => `<span class="tag">${s}</span>`).join('') : p.specialization;
+
+                html += `
+                    <tr>
+                        <td><strong>${p.businessName || 'N/A'}</strong></td>
+                        <td>${p.contactPerson || '-'}</td>
+                        <td>${p.location || 'N/A'}</td>
+                        <td>${p.contactNumber || 'N/A'}</td>
+                        <td>${specs || '-'}</td>
+                        <td>${p.processingCapacity || '-'}</td>
+                    </tr>
+                `;
+            });
+
+            html += `</tbody></table>`;
+            document.getElementById('tableContainer').innerHTML = html;
+        }
+
+        window.addEventListener('DOMContentLoaded', loadData);
+    </script>
+</body>
+
+</html>
