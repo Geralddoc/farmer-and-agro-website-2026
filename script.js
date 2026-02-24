@@ -17,25 +17,24 @@ const processorCountEl = document.getElementById('processor-count');
 let hasCounted = false;
 
 async function fetchStats() {
-    const defaultConvexUrl = 'https://happy-otter-123.convex.cloud'; // Fallback
-    let convexUrl = localStorage.getItem('convexUrl') || defaultConvexUrl;
-
-    if (convexUrl.endsWith('/importData')) {
-        convexUrl = convexUrl.replace('/importData', '');
-    }
-
     try {
         const [farmersRes, processorsRes] = await Promise.all([
-            fetch(`${convexUrl.replace(/\/$/, '')}/getFarmers`),
-            fetch(`${convexUrl.replace(/\/$/, '')}/getProcessors`)
+            fetch('farmers import 2026.xlsx'),
+            fetch('agro processors import 2026.xlsx')
         ]);
 
-        const farmers = await farmersRes.json();
-        const processors = await processorsRes.json();
+        const farmersBuffer = await farmersRes.arrayBuffer();
+        const processorsBuffer = await processorsRes.arrayBuffer();
+
+        const farmersWorkbook = XLSX.read(farmersBuffer, { type: 'array' });
+        const processorsWorkbook = XLSX.read(processorsBuffer, { type: 'array' });
+
+        const farmersCount = XLSX.utils.sheet_to_json(farmersWorkbook.Sheets[farmersWorkbook.SheetNames[0]]).length;
+        const processorsCount = XLSX.utils.sheet_to_json(processorsWorkbook.Sheets[processorsWorkbook.SheetNames[0]]).length;
 
         // Update the target attribute for the animation
-        farmerCountEl.setAttribute('data-target', farmers.length);
-        processorCountEl.setAttribute('data-target', processors.length);
+        farmerCountEl.setAttribute('data-target', farmersCount);
+        processorCountEl.setAttribute('data-target', processorsCount);
     } catch (e) {
         console.error("Failed to fetch dynamic stats", e);
         // Fallback to static numbers if there's an error so it doesn't stay at 0
