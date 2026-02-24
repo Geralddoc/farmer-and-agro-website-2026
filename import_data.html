@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agro2026 Data Importer</title>
+    <!-- Include the SheetJS (XLSX) library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #2e7d32;
+            --bg-color: #f8fafc;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            padding: 2rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+
+        h1,
+        h2 {
+            color: var(--primary-color);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 0.8rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        .file-upload {
+            border: 2px dashed var(--primary-color);
+            padding: 2rem;
+            text-align: center;
+            border-radius: 8px;
+            background: #e8f5e9;
+            cursor: pointer;
+            margin-bottom: 1rem;
+        }
+
+        button {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 4px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        button:hover {
+            background: #1b5e20;
+        }
+
+        #log {
+            background: #1e1e1e;
+            color: #4af626;
+            padding: 1rem;
+            border-radius: 4px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            margin-top: 1rem;
+        }
+
+        .error {
+            color: #ff5252;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <h1>🌽 Agro2026 Data Importer</h1>
+        <p>This utility parses your Excel files locally and pushes the data directly to your Convex Database.</p>
+
+        <div class="form-group">
+            <label for="convexUrl">Convex HTTP API URL:</label>
+            <input type="text" id="convexUrl" placeholder="e.g., https://happy-otter-123.convex.cloud/api/mutation">
+            <small>Note: You need to configure a Convex HTTP Action in your dfs-web project to accept these POST
+                requests.</small>
+        </div>
+
+        <div class="form-group">
+            <h2>1. Import Farmers</h2>
+            <p>Upload <code>Farmers import 2026.xlsx</code></p>
+            <input type="file" id="farmersFile" accept=".xlsx, .xls">
+        </div>
+
+        <div class="form-group">
+            <h2>2. Import Processors</h2>
+            <p>Upload <code>agro processors import 2026.xlsx</code></p>
+            <input type="file" id="processorsFile" accept=".xlsx, .xls">
+        </div>
+
+        <button onclick="startImport()">🚀 Start Import Process</button>
+
+        <h2>Import Log</h2>
+        <div id="log">Waiting to start...</div>
+    </div>
+
+    <script>
+        function logMsg(msg, isError = false) {
+            const logEl = document.getElementById('log');
+            const span = document.createElement('div');
+            span.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            if (isError) span.className = 'error';
+            logEl.appendChild(span);
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        async function processFile(fileId, role) {
+            const fileInput = document.getElementById(fileId);
+            if (!fileInput.files.length) {
+                logMsg(`Skipping ${role} import: No file selected.`);
+                return null;
+            }
+
+            const file = fileInput.files[0];
+            logMsg(`Reading ${file.name}...`);
+
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        // Assume first sheet
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+                        // Convert to JSON
+                        const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+                        logMsg(`Successfully parsed ${json.length} records from ${file.name}`);
+                        resolve(json);
+                    } catch (err) {
+                        logMsg(`Error parsing ${file.name}: ${err.message}`, true);
+                        reject(err);
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        function mapFarmerRecord(row) {
+            // Mapping based on typical headers and the convex Schema
+            return {
+                fullName: row["Farmer Name"] || row["Name"] || row["fullName"] || "Unknown",
+                location: row["Location"] || row["Address"] || row["location"] || "Unknown",
+                contactNumber: String(row["Contact Number"] || row["Phone"] || row["contactNumber"] || "N/A"),
+                districts: row["Districts"] ? String(row["Districts"]).split(',').map(s => s.trim()) : ["All"],
+                commodities: row["Commodities"] ? String(row["Commodities"]).split(',').map(s => s.trim()) : [],
+                preferredMarkets: row["Preferred Markets"] ? String(row["Preferred Markets"]).split(',').map(s => s.trim()) : [],
+                certifications: row["Certifications"] ? String(row["Certifications"]).split(',').map(s => s.trim()) : [],
+                status: row["Status"] || "Active"
+            };
+        }
+
+        function mapProcessorRecord(row) {
+            return {
+                businessName: row["Business Name"] || row["Company"] || row["businessName"] || "Unknown",
+                contactPerson: row["Contact Person"] || row["Name"] || "",
+                location: row["Location"] || row["Address"] || "Unknown",
+                contactNumber: String(row["Contact Number"] || row["Phone"] || "N/A"),
+                processingCapacity: String(row["Capacity"] || row["Processing Capacity"] || ""),
+                specialization: row["Specialization"] ? String(row["Specialization"]).split(',').map(s => s.trim()) : [],
+                certificationStatus: row["Certification"] || row["Certification Status"] || "",
+                email: row["Email"] || "",
+                status: row["Status"] || "Active",
+                remarks: row["Remarks"] || ""
+            };
+        }
+
+        async function pushDataToConvex(url, type, payload) {
+            // Note: This requires an HTTP action to be configured on the Convex backend
+            // Because standard mutations require the Convex Client Library.
+            logMsg(`Attempting to push ${payload.length} ${type} to Convex...`);
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        type: type,
+                        data: payload
+                    })
+                });
+
+                if (response.ok) {
+                    logMsg(`✅ Successfully pushed ${type} data!`);
+                } else {
+                    const text = await response.text();
+                    logMsg(`❌ Failed to push ${type}. Status: ${response.status} - ${text}`, true);
+                }
+            } catch (e) {
+                logMsg(`❌ Network error pushing ${type}: ${e.message}`, true);
+            }
+        }
+
+        async function startImport() {
+            const convexUrl = document.getElementById('convexUrl').value.trim();
+            if (!convexUrl) {
+                logMsg("Error: Please provide a Convex HTTP API URL.", true);
+                return;
+            }
+
+            // Save URL to localStorage so other pages can use it
+            localStorage.setItem('convexUrl', convexUrl);
+
+            logMsg("--- Starting Import Process ---");
+
+            // 1. Process Farmers
+            const rawFarmers = await processFile('farmersFile', 'farmers');
+            if (rawFarmers) {
+                const mappedFarmers = rawFarmers.map(mapFarmerRecord);
+                await pushDataToConvex(convexUrl, 'batchCreateFarmers', mappedFarmers);
+            }
+
+            // 2. Process Agro Processors
+            const rawProcessors = await processFile('processorsFile', 'agro_processors');
+            if (rawProcessors) {
+                const mappedProcessors = rawProcessors.map(mapProcessorRecord);
+                await pushDataToConvex(convexUrl, 'batchCreateProcessors', mappedProcessors);
+            }
+
+            logMsg("--- Import Process Completed ---");
+        }
+    </script>
+</body>
+
+</html>
